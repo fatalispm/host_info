@@ -1,7 +1,7 @@
 """
 Module for representing host info
 """
-
+from __future__ import print_function
 import datetime
 import argparse
 
@@ -33,7 +33,7 @@ def cpu_usage():
     return psutil.cpu_percent()
 
 
-class InfoView:
+class InfoView(object):
     """
     Class used for presenting information about host
     """
@@ -65,9 +65,10 @@ class InfoView:
     def ram_repr(self):
         """
         Returns memory usage
-	:return str
+        :return str
         """
-        return f'Memory usage: {ram_usage()} '
+
+        return 'Memory usage: {ram_usage} '.format(ram_usage=ram_usage())
 
     @property
     def cpu_repr(self):
@@ -75,7 +76,7 @@ class InfoView:
         Returns cpu usage
         :return str
         """
-        return f'Current cpu usage: {cpu_usage()} '
+        return 'Current cpu usage: {cpu_usage} '.format(cpu_usage=cpu_usage())
 
     @property
     def pc_repr(self):
@@ -83,7 +84,8 @@ class InfoView:
         Returns process count representation
         :return str
         """
-        return f'Proc count: {processes_count()} '
+        return 'Proc count: {processes_count} '.format(
+            processes_count=processes_count())
 
     @property
     def _initial(self):
@@ -91,7 +93,7 @@ class InfoView:
         Formats an initial string, that returns current data
         :return str
         """
-        return f'Date: {datetime.datetime.now()} '
+        return 'Date: {now} '.format(now=datetime.datetime.now())
 
     def show(self):
         """
@@ -108,7 +110,7 @@ class InfoView:
         return initial
 
 
-class FilePrinter:
+class FilePrinter(object):
     """
     A simple wrapper for appending info to file
     """
@@ -146,6 +148,16 @@ def create_parser(description=''):
     return parser
 
 
+def get_printer(args):
+    """
+    Function that returns printer
+    :param args: argparse.args
+    :return: Callable
+    """
+    printer = FilePrinter(args.file) if args.file else print
+    return printer
+
+
 def main():
     """
     The main function of the program
@@ -153,10 +165,8 @@ def main():
     """
     parser = create_parser('Host information.')
     args = parser.parse_args()
-    if args.file:
-        printer = FilePrinter(args.file)
-    else:
-        printer = print
+
+    printer = get_printer(args)
 
     info = InfoView(**args.__dict__)
     printer(info.show())
