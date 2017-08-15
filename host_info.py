@@ -34,6 +34,7 @@ def cpu_usage():
 
 
 class InfoView(object):
+
     """
     Class used for presenting information about host
     """
