@@ -1,10 +1,10 @@
 """
 Module for representing host info
 """
-from __future__ import print_function
 import datetime
 import argparse
 
+import logging
 import psutil
 
 
@@ -38,28 +38,23 @@ class InfoView(object):
     Class used for presenting information about host
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, mem, cpu, process_count, show_all):
         """
-        We pass arguments for correct showing of info
-        m - stands for memory
-        c - for cpu
-        p - for processes
-        a - all
-        BTW, what should we do if all params are False?
-        If all are False, we return everything
-        :param kwargs: dict
+
+        :param mem: bool
+        :param cpu: bool
+        :param process_count: bool
+        :param show_all: bool
         """
-        self.mem = kwargs.pop('m', False)
-        self.cpu = kwargs.pop('c', False)
-        self.process_count = kwargs.pop('p', False)
-        self.all = kwargs.pop('a', False)
+        self.mem = mem
+        self.cpu = cpu
+        self.process_count = process_count
 
-        if not any([self.mem, self.cpu, self.process_count]):
-            self.all = True
+        show_all = show_all or not \
+            any([self.mem, self.cpu, self.process_count])
 
-        if self.all:
+        if show_all:
             self.mem, self.cpu, self.process_count = [True] * 3
-        super(InfoView, self).__init__()
 
     @property
     def ram_repr(self):
@@ -111,22 +106,49 @@ class InfoView(object):
 
 
 class FilePrinter(object):
+
     """
     A simple wrapper for appending info to file
     """
 
-    def __init__(self, path):
+    def __init__(self, path=None, console=False):
         """
        :param path: str Path to file
+       :param console: bool display result into console?
        """
         self.path = path
+        self.console = console
 
-    def __call__(self, _str):
+    def print_to_file(self, show_string):
         """
-        :param _str: str string to write into the file
+
+        :param show_string: str
+        :return:
         """
-        with open(self.path, 'a+') as f:
-            f.write(_str + '\n')
+        try:
+            with open(self.path, 'a+') as f:
+                f.writelines([show_string])
+        except EnvironmentError as e:
+            logging.error('Error while working with file {e}'.format(e=e))
+
+    def print_to_console(self, show_string):
+        """
+
+        :param show_string: str
+        :return:
+        """
+        print show_string
+
+    def __call__(self, show_string):
+        """
+        :param show_string: str string to write into the file
+        """
+        if self.console:
+            self.print_to_console(show_string)
+
+        if self.path:
+            self.print_to_file(show_string)
+
 
 
 def create_parser(description=''):
@@ -138,12 +160,15 @@ def create_parser(description=''):
     parser = argparse.ArgumentParser(description=description)
 
     parser.add_argument('-p', help='Show number of processes',
-                        action='store_true')
+                        action='store_true', dest='process')
     parser.add_argument('-c', help='Show cpu usage',
-                        action='store_true')
+                        action='store_true', dest='cpu')
     parser.add_argument('-m', help='Memory usage',
-                        action='store_true')
-    parser.add_argument('-a', help='Show all info', action='store_true')
+                        action='store_true', dest='mem')
+    parser.add_argument('-a', help='Show all info', action='store_true',
+                        dest='all')
+    parser.add_argument('--console', help='Include console', default=True,
+                        dest='console')
     parser.add_argument('--file', help='File path', type=str)
     return parser
 
@@ -154,8 +179,7 @@ def get_printer(args):
     :param args: argparse.args
     :return: Callable
     """
-    printer = FilePrinter(args.file) if args.file else print
-    return printer
+    return FilePrinter(args.file, args.console)
 
 
 def main():
@@ -168,7 +192,8 @@ def main():
 
     printer = get_printer(args)
 
-    info = InfoView(**args.__dict__)
+    info = InfoView(cpu=args.cpu, mem=args.mem, show_all=args.all,
+                    process_count=args.process)
     printer(info.show())
 
 
