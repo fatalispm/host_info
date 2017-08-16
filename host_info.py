@@ -1,12 +1,12 @@
 """
 Module for representing host info
 """
+
 import argparse
 import datetime
 
 import psutil
 import logging
-
 
 
 def processes_count():
@@ -152,7 +152,6 @@ class FilePrinter(object):
 
         if self.path:
             self.print_to_file(show_string)
-
 
 
 def create_parser(description=''):
