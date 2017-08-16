@@ -71,14 +71,14 @@ def show(cpu=False, mem=False, process_count=False):
      """
     initial = prepare_string(INITIAL, datetime.datetime.now())
 
-    if cpu:
-        initial += prepare_string(CPU_USAGE, HostInfo.cpu_usage())
-    if mem:
-        initial += prepare_string(MEMORY_USAGE, HostInfo.ram_usage())
-    if process_count:
-        initial += prepare_string(PROC_COUNT, HostInfo.cpu_usage())
+    cpu = prepare_string(CPU_USAGE, HostInfo.cpu_usage()) if cpu else ''
+    mem = prepare_string(MEMORY_USAGE, HostInfo.ram_usage()) if mem else ''
+    pc_count = prepare_string(PROC_COUNT, HostInfo.processes_count()) \
+			if process_count else ''
 
-    return initial
+    strings = [initial, cpu, mem, pc_count]
+
+    return ' '.join(strings)
 
 
 def print_to_file(path, show_string):
