@@ -83,8 +83,7 @@ class Page(object):
             ip = self._get_ip_from_url(url)
 
             if domain and ip:
-                yield (url, self._get_domain_from_url(url),
-                       self._get_ip_from_url(url))
+                yield (url, domain, ip)
 
 
 def parse(content):
@@ -96,7 +95,7 @@ def parse(content):
     return Page(BeautifulSoup(content))
 
 
-def handler(request, exception):
+def error_handler(request, exception):
     """
     Handler for handling exceptions when retrieving pages
     :param request: grequests.request
@@ -112,8 +111,8 @@ def request_pages(urls):
     :param urls: list of str
     :return: generator of str that contains page body
     """
-    rs = (grequests.get(u) for u in urls)
-    response = grequests.imap(rs, exception_handler=handler)
+    rs = (grequests.get(u, timeout=3) for u in urls)
+    response = grequests.imap(rs, exception_handler=error_handler)
     return (r.content for r in response if r is not None)
 
 
