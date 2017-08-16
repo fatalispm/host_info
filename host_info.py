@@ -4,162 +4,107 @@ Module for representing host info
 
 import argparse
 import datetime
-
-import psutil
 import logging
 
-
-def processes_count():
-    """
-    Return number of pcs
-    :return: int
-    """
-    return len(psutil.pids())
+import psutil
 
 
-def ram_usage():
-    """
-    Return ram usage
-    :return int
-    """
-    mem = psutil.virtual_memory()
-    return mem.available
+MEMORY_USAGE = 'Memory usage: %s '
+CPU_USAGE = 'CPU usage: %s '
+PROC_COUNT = 'Proc count: %s '
+INITIAL = 'Date: %s '
 
 
-def cpu_usage():
-    """
-    Return cpu usage
-    :return int
-    """
-    return psutil.cpu_percent()
-
-
-class InfoView(object):
+class HostInfo(object):
 
     """
-    Class used for presenting information about host
+    Class responsible for providing information about system info
     """
 
-    def __init__(self, mem, cpu, process_count, show_all):
+    @staticmethod
+    def processes_count():
         """
-
-        :param mem: bool
-        :param cpu: bool
-        :param process_count: bool
-        :param show_all: bool
+        :Return:
+            int number of pcs
         """
-        self.mem = mem
-        self.cpu = cpu
-        self.process_count = process_count
+        return len(psutil.pids())
 
-        show_all = show_all or not \
-            any([self.mem, self.cpu, self.process_count])
-
-        if show_all:
-            self.mem, self.cpu, self.process_count = [True] * 3
-
-    @property
-    def ram_repr(self):
+    @staticmethod
+    def ram_usage():
         """
-        Returns memory usage
-        :return str
+        :Return:
+            int ram usage
         """
+        mem = psutil.virtual_memory()
+        return mem.available
 
-        return 'Memory usage: {ram_usage} '.format(ram_usage=ram_usage())
-
-    @property
-    def cpu_repr(self):
+    @staticmethod
+    def cpu_usage():
         """
-        Returns cpu usage
-        :return str
+        :Return:
+            float cpu_usage
         """
-        return 'Current cpu usage: {cpu_usage} '.format(cpu_usage=cpu_usage())
-
-    @property
-    def pc_repr(self):
-        """
-        Returns process count representation
-        :return str
-        """
-        return 'Proc count: {processes_count} '.format(
-            processes_count=processes_count())
-
-    @property
-    def _initial(self):
-        """
-        Formats an initial string, that returns current data
-        :return str
-        """
-        return 'Date: {now} '.format(now=datetime.datetime.now())
-
-    def show(self):
-        """
-        Method that returns a representation of the host info
-        :return str
-        """
-        initial = self._initial
-
-        if self.cpu:
-            initial += self.cpu_repr
-        if self.mem:
-            initial += self.ram_repr
-        if self.process_count:
-            initial += self.pc_repr
-
-        return initial
+        return psutil.cpu_percent()
 
 
-class FilePrinter(object):
+def prepare_string(template, val):
+    """
+    :Parameters:
+        - `template`: str template to use
+        - `val`: str value to insert into the template
+
+    :Return:
+        str prepared string
+     """
+    return template % (val,)
+
+
+def show(cpu=False, mem=False, process_count=False):
+    """
+    :Parameters:
+        - `cpu`: bool show cpu
+        - `mem`: bool show memory
+        - `process_count`: bool show process_count
+
+    :Return:
+        str
+     """
+    initial = prepare_string(INITIAL, datetime.datetime.now())
+
+    if cpu:
+        initial += prepare_string(CPU_USAGE, HostInfo.cpu_usage())
+    if mem:
+        initial += prepare_string(MEMORY_USAGE, HostInfo.ram_usage())
+    if process_count:
+        initial += prepare_string(PROC_COUNT, HostInfo.cpu_usage())
+
+    return initial
+
+
+def print_to_file(path, show_string):
+    """
+    :Parameters:
+       - `path`: str path to file
+       - `show_string`: str string to write to file
 
     """
-    A simple wrapper for appending info to file
-    """
-
-    def __init__(self, path=None, console=False):
-        """
-       :param path: str Path to file
-       :param console: bool display result into console?
-       """
-        self.path = path
-        self.console = console
-
-    def print_to_file(self, show_string):
-        """
-
-        :param show_string: str
-        :return:
-        """
-        try:
-            with open(self.path, 'a+') as f:
-                f.writelines([show_string])
-        except EnvironmentError as e:
-            logging.error('Error while working with file {e}'.format(e=e))
-
-    def print_to_console(self, show_string):
-        """
-
-        :param show_string: str
-        :return:
-        """
-        print show_string
-
-    def __call__(self, show_string):
-        """
-        :param show_string: str string to write into the file
-        """
-        if self.console:
-            self.print_to_console(show_string)
-
-        if self.path:
-            self.print_to_file(show_string)
+    try:
+        with open(path, 'a+') as f:
+            f.writelines([show_string])
+    except EnvironmentError as e:
+        logging.error('Error while working with file %s', e)
 
 
 def create_parser(description=''):
     """
     Function that creates parser
-    :param description: str
-    :return: argparse.ArgumentParser
+    :Parameters:
+        - `description`: str name of the parser
+
+    :Return:
+        argparse.ArgumentParser
     """
+
     parser = argparse.ArgumentParser(description=description)
 
     parser.add_argument('-p', help='Show number of processes',
@@ -177,28 +122,36 @@ def create_parser(description=''):
     return parser
 
 
-def get_printer(args):
+def validate_input(args):
     """
-    Function that returns printer
-    :param args: argparse.args
-    :return: Callable
+    Validates input from args
+    :Parameters:
+        - `args`: argparse.args
+
+    :Return:
+        bool
     """
-    return FilePrinter(args.file, args.console)
+    return any([args.mem, args.cpu, args.process])
 
 
 def main():
     """
     The main function of the program
-    :return:
     """
     parser = create_parser('Host information.')
     args = parser.parse_args()
 
-    printer = get_printer(args)
+    if not validate_input(args):
+        logging.error('Provide at least one parameter')
+        return
 
-    info = InfoView(cpu=args.cpu, mem=args.mem, show_all=args.all,
-                    process_count=args.process)
-    printer(info.show())
+    response = show(cpu=args.cpu, mem=args.mem, process_count=args.process)
+
+    if args.file:
+        print_to_file(args.file, response)
+
+    if args.console:
+        print(response)
 
 
 if __name__ == '__main__':
