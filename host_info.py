@@ -8,7 +8,6 @@ import logging
 
 import psutil
 
-
 MEMORY_USAGE = 'Memory usage: %s '
 CPU_USAGE = 'CPU usage: %s '
 PROC_COUNT = 'Proc count: %s '
@@ -16,7 +15,6 @@ INITIAL = 'Date: %s '
 
 
 class HostInfo(object):
-
     """
     Class responsible for providing information about system info
     """
@@ -70,27 +68,33 @@ def show(cpu=False, mem=False, process_count=False):
         str
      """
     initial = prepare_string(INITIAL, datetime.datetime.now())
+    strings = [initial]
 
-    cpu = prepare_string(CPU_USAGE, HostInfo.cpu_usage()) if cpu else ''
-    mem = prepare_string(MEMORY_USAGE, HostInfo.ram_usage()) if mem else ''
-    pc_count = prepare_string(PROC_COUNT, HostInfo.processes_count()) \
-			if process_count else ''
+    if cpu:
+        strings.append(prepare_string(CPU_USAGE, HostInfo.cpu_usage()))
 
-    strings = [initial, cpu, mem, pc_count]
+    if mem:
+        strings.append(prepare_string(MEMORY_USAGE, HostInfo.ram_usage()))
 
-    return ' '.join(strings)
+    if process_count:
+        strings.append(prepare_string(PROC_COUNT, HostInfo.processes_count()))
+
+    return '\n'.join(strings)
 
 
 def print_to_file(path, show_string):
     """
     :Parameters:
-       - `path`: str path to file
+       - `path`: str|list path to file
        - `show_string`: str string to write to file
 
     """
+    if isinstance(show_string, list):
+        show_string = '\n'.join(show_string)
+
     try:
         with open(path, 'a+') as f:
-            f.writelines([show_string])
+            f.write(show_string+'\n')
     except EnvironmentError as e:
         logging.error('Error while working with file %s', e)
 
@@ -142,8 +146,8 @@ def main():
     args = parser.parse_args()
 
     if not validate_input(args):
-        logging.error('Provide at least one parameter')
-        return
+        logging.error('Provide at least one parameter p/c/m')
+        exit(0)
 
     response = show(cpu=args.cpu, mem=args.mem, process_count=args.process)
 
