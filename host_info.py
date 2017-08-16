@@ -98,12 +98,14 @@ class InfoView(object):
         :return str
         """
         initial = self._initial
+
         if self.cpu:
             initial += self.cpu_repr
         if self.mem:
             initial += self.ram_repr
         if self.process_count:
             initial += self.pc_repr
+
         return initial
 
 
@@ -172,6 +174,7 @@ def create_parser(description=''):
     parser.add_argument('--console', help='Include console', default=True,
                         dest='console')
     parser.add_argument('--file', help='File path', type=str)
+
     return parser
 
 
