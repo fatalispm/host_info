@@ -1,11 +1,12 @@
 """
 Module for representing host info
 """
-import datetime
 import argparse
+import datetime
 
-import logging
 import psutil
+import logging
+
 
 
 def processes_count():
