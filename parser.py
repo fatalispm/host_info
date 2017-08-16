@@ -14,7 +14,6 @@ LOGGING = False
 
 
 class Page(object):
-
     """
     Class that represents html Page
     Provides methods like fetch_urls
@@ -117,16 +116,25 @@ def request_pages(urls):
     return (r.content for r in response if r is not None)
 
 
+def get_pages_from_urls(urls):
+    """
+    Function that returns wrapped Page objects from urls
+    :param urls: list of str
+    :return list of Page
+    """
+    for content in request_pages(urls):
+        yield parse(content)
+
+
 def main():
     """
     Main function of the program
     """
     urls = sys.argv[1:]
 
-    for content in request_pages(urls):
-        page = parse(content)
-        for result in page.get_urls_hosts_ips():
-            print result
+    pages = get_pages_from_urls(urls)
+    for page in pages:
+        print page.get_urls_hosts_ips()
 
 
 if __name__ == '__main__':
