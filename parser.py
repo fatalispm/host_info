@@ -102,7 +102,8 @@ def error_handler(request, exception):
     :param exception: Exception
     :return:
     """
-    logging.error(exception)
+    if LOGGING:
+        logging.error(exception)
 
 
 def request_pages(urls):
