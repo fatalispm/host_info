@@ -7,7 +7,7 @@ import socket
 import sys
 from urlparse import urlparse
 
-import grequests
+import requests
 from bs4 import BeautifulSoup
 
 LOGGING = False
@@ -23,30 +23,34 @@ class Page(object):
     def __init__(self, soap):
         """
 
-        :param soap: BeautifulSoup
+        :Parameters:
+            - `soap`: BeautifulSoup
         """
         self.soap = soap
 
     @staticmethod
     def _fetch_url_from_a(a):
         """
-
-        :param a: bs4.element
-        :return:  str string parsed from a element
+        :Parameters:
+            - `a`: bs4.element
+        :Return:
+           str string parsed from a element
         """
         return a.get('href')
 
     def _find_links(self):
         """
         Method that returns all a tags on the page
-        :return: list of bs4.Element
+        :Return: 
+            list of bs4.Element
         """
         return self.soap.find_all('a')
 
     def fetch_urls(self):
         """
         Method that returns list of urls
-        :return: generator
+        :Return:
+            generator
         """
         for a in self._find_links():
             yield self._fetch_url_from_a(a)
@@ -54,22 +58,22 @@ class Page(object):
 
 def get_url_host_ip(url):
     """
-    :param url: str url
-    Returns triple (url, domain, ip) only if every part is present
-    :return generator
+    :Parameters:
+       - `url`: str url
+    :Return:
+       generator triple (url, domain, ip) only if every part is present
     """
     domain = _get_domain_from_url(url)
     ip = _get_ip_from_url(domain)
-
-    if domain and ip:
-        return url, domain, ip
+    return url, domain, ip
 
 
 def _get_ip_from_url(domain):
     """
-
-    :param domain: str domain of the webpage
-    :return: str ip address
+    :Parameters:
+        - `domain`: str domain of the webpage
+    :Return: 
+        str ip address
     """
     try:
         return socket.gethostbyname(domain)
@@ -81,14 +85,16 @@ def _get_ip_from_url(domain):
 def _get_domain_from_url(url):
     """
     Fetches domain from url
-    :param url: str
-    :return: str
+    :Parameters:
+        - `url`: str
+    :Return:
+        str
     """
     splitted_url = urlparse(url)
     domain = splitted_url.netloc
 
     if domain.startswith('www.'):
-        domain = domain[5:]
+        domain = domain[4:]
 
     return domain
 
@@ -96,50 +102,61 @@ def _get_domain_from_url(url):
 def parse(content, parser):
     """
     Parses page and returns a wrapper around html page
-    :param content: str
-    :return: Page
+    :Parameters:
+        - `content`: str
+    :Return: 
+        Page
     """
     return Page(parser(content))
 
-
-def error_handler(request, exception):
+def request_page(url):
     """
-    Handler for handling exceptions when retrieving pages
-    :param request: grequests.request
-    :param exception: Exception
-    :return:
+    :Parameters:
+        - `url`: str url of the page to request
+    
+    :Return: 
+        request.Response object
     """
-    if LOGGING:
-        logging.error(exception)
-
+    try:
+        response = requests.get(url, timeout=3)
+        return response
+    except requests.RequestException as e:
+        if LOGGING:
+            logging.error(e)
 
 def request_pages(urls):
     """
+    Function that returns list of pages content from the list of urls 
+    Ignores exceptions
 
-    :param urls: list of str
-    :return: generator of str that contains page body
+    :Parameters:
+        - `urls`: list of str
+    :Return: 
+        generator of str that contains page body
     """
-    rs = (grequests.get(u, timeout=3) for u in urls)
-    response = grequests.imap(rs, exception_handler=error_handler)
+    response = (request_page(url) for url in urls)
     return (r.content for r in response if r)
 
 
 def get_pages_from_contents(contents, parser):
     """
     Function that returns wrapped Page objects from contents of the pages
-    :param urls: list of str
-    :param parse: parser user can pass custom parser
-    :return list of Page
+    :Parameters:
+        - `urls`: list of str
+        - `parse`: parser user can pass custom parser
+    :Return:
+        list of Page
     """
     for content in contents:
-        yield parse(content, parser)
+        yield Page(parser(content))
 
 
 def list_of_links_from_contents(contents, parser=BeautifulSoup):
     """
     Core function of the program, returns list of links from urls
-    :param urls: list of str
-    :param parser: parser 
+    :Parameters:
+        - `urls`: list of str
+        - `parser`: parser 
     :return generator
     """
     pages = get_pages_from_contents(contents, parser)
@@ -163,3 +180,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+
