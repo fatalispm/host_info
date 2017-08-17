@@ -121,7 +121,7 @@ def request_pages(urls):
     """
     rs = (grequests.get(u, timeout=3) for u in urls)
     response = grequests.imap(rs, exception_handler=error_handler)
-    return (r.content for r in response if r is not None)
+    return (r.content for r in response if r)
 
 
 def get_pages_from_contents(contents, parser):
