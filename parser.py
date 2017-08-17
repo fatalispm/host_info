@@ -14,6 +14,7 @@ LOGGING = False
 
 
 class Page(object):
+
     """
     Class that represents html Page
     Provides methods like fetch_urls
