@@ -1,3 +1,4 @@
+#!usr/bin/python
 """
 Module for retrieving ips/domains from url
 """
@@ -17,40 +18,6 @@ from parsers import parser_factory
 LOGGING = False
 DELAY = 1
 RETRY = 3
-
-
-class Page(object):
-
-    """
-    Class that represents html Page
-    Provides methods like fetch_urls
-    """
-
-    def __init__(self, soap):
-        """
-
-        :Parameters:
-            - `soap`: Parser
-        """
-        self.soap = soap
-
-    def _find_links(self):
-        """
-        Method that returns all a tags on the page
-        :Return:
-            list of bs4.Element
-        """
-        return self.soap.find_all('a')
-
-    def fetch_urls(self):
-        """
-        Method that returns list of urls
-        :Return:
-            generator
-        """
-        for a in self._find_links():
-            yield a.get('href')
-
 
 def retry(delay, tries):
     """
@@ -87,12 +54,12 @@ def get_url_host_ip(url):
     :Return:
        generator triple (url, domain, ip) only if every part is present
     """
-    domain = _get_domain_from_url(url)
-    ip = _get_ip_from_url(domain)
+    domain = domain_from_url(url)
+    ip = get_ip_from_url(domain)
     return url, domain, ip
 
 
-def _get_ip_from_url(domain):
+def get_ip_from_url(domain):
     """
     :Parameters:
         - `domain`: str domain of the webpage
@@ -105,7 +72,7 @@ def _get_ip_from_url(domain):
         logging.error("Can't fetch ip from domain %s", domain)
 
 
-def _get_domain_from_url(url):
+def domain_from_url(url):
     """
     Fetches domain from url
     :Parameters:
@@ -118,10 +85,7 @@ def _get_domain_from_url(url):
     splitted_url = urlparse(url)
     domain = splitted_url.netloc
 
-    if domain.startswith('www.'):
-        domain = domain[4:]
-
-    return domain
+    return domain[4:] if domain.startswith('www.') else domain
 
 
 @retry(DELAY, RETRY)
@@ -134,7 +98,7 @@ def request_page(url):
         request.Response object
     """
     logging.info('Requesting url %s', url)
-    return requests.get(url, timeout=3)
+    return requests.get(url, timeout=3, verify=False)
 
 
 def request_pages(urls):
@@ -148,23 +112,12 @@ def request_pages(urls):
         generator of str that contains page body
     """
     logging.info('Requesting pages %s', urls)
-
-    response = (request_page(url) for url in urls)
-    return (r.content for r in response if r)
-
-
-def get_pages_from_contents(contents, parser):
-    """
-    Function that returns wrapped Page objects from contents of the pages
-    :Parameters:
-        - `urls`: list of str
-        - `parse`: parser user can pass custom parser
-    :Return:
-        list of Page
-    """
-    for content in contents:
-        yield Page(parser(content))
-
+    for url in urls:
+        page = request_page(url)
+        if page:
+            yield page.content
+        else:
+            logging.debug('Wrong url %s', url)
 
 def list_of_links_from_contents(contents, parser=''):
     """
@@ -175,11 +128,13 @@ def list_of_links_from_contents(contents, parser=''):
     :return generator
     """
     parser = parser_factory(parser)
-    pages = get_pages_from_contents(contents, parser)
-    for page in pages:
-        for url in page.fetch_urls():
-            yield url
-
+    for content in contents:
+        parsed_page = parser(content)
+        for a in parsed_page.find_all('a'):
+            url = a.get('href')
+            logging.info('Processed url %s', url)
+            if url:
+                yield url
 
 def main():
     """
@@ -189,6 +144,7 @@ def main():
     contents = request_pages(urls)
 
     for url in list_of_links_from_contents(contents):
+        logging.info('Retrieving url %s', url)
         result = get_url_host_ip(url)
         if result:
             print result
