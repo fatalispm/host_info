@@ -8,7 +8,8 @@ import sys
 from urlparse import urlparse
 
 import requests
-from bs4 import BeautifulSoup
+
+from parsers import parser_factory 
 
 LOGGING = False
 
@@ -24,19 +25,9 @@ class Page(object):
         """
 
         :Parameters:
-            - `soap`: BeautifulSoup
+            - `soap`: Parser
         """
         self.soap = soap
-
-    @staticmethod
-    def _fetch_url_from_a(a):
-        """
-        :Parameters:
-            - `a`: bs4.element
-        :Return:
-           str string parsed from a element
-        """
-        return a.get('href')
 
     def _find_links(self):
         """
@@ -53,11 +44,12 @@ class Page(object):
             generator
         """
         for a in self._find_links():
-            yield self._fetch_url_from_a(a)
+            yield a.get('href')
 
 
 def get_url_host_ip(url):
     """
+    Function that returns triple (url, domain, ip)
     :Parameters:
        - `url`: str url
     :Return:
@@ -77,7 +69,7 @@ def _get_ip_from_url(domain):
     """
     try:
         return socket.gethostbyname(domain)
-    except socket.gaierror:
+    except socket.error:
         if LOGGING:
             logging.error("Can't fetch ip from domain %s", domain)
 
@@ -117,12 +109,14 @@ def request_page(url):
     :Return: 
         request.Response object
     """
+    logging.info('Requesting url %s', url)
     try:
+
         response = requests.get(url, timeout=3)
         return response
     except requests.RequestException as e:
         if LOGGING:
-            logging.error(e)
+            logging.error("Error occured when fetching url %s %s", (url ,e))
 
 def request_pages(urls):
     """
@@ -151,14 +145,15 @@ def get_pages_from_contents(contents, parser):
         yield Page(parser(content))
 
 
-def list_of_links_from_contents(contents, parser=BeautifulSoup):
+def list_of_links_from_contents(contents, parser=''):
     """
     Core function of the program, returns list of links from urls
     :Parameters:
         - `urls`: list of str
-        - `parser`: parser 
+        - `parser`: str name of the parser to use
     :return generator
     """
+    parser = parser_factory(parser)
     pages = get_pages_from_contents(contents, parser)
     for page in pages:
         for url in page.fetch_urls():
