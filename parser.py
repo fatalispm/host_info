@@ -93,13 +93,13 @@ def _get_domain_from_url(url):
     return domain
 
 
-def parse(content):
+def parse(content, parser):
     """
     Parses page and returns a wrapper around html page
     :param content: str
     :return: Page
     """
-    return Page(BeautifulSoup(content))
+    return Page(parser(content))
 
 
 def error_handler(request, exception):
@@ -124,23 +124,25 @@ def request_pages(urls):
     return (r.content for r in response if r is not None)
 
 
-def get_pages_from_urls(urls):
+def get_pages_from_contents(contents, parser):
     """
-    Function that returns wrapped Page objects from urls
+    Function that returns wrapped Page objects from contents of the pages
     :param urls: list of str
+    :param parse: parser user can pass custom parser
     :return list of Page
     """
-    for content in request_pages(urls):
-        yield parse(content)
+    for content in contents:
+        yield parse(content, parser)
 
 
-def list_of_links_from_urls(urls):
+def list_of_links_from_contents(contents, parser=BeautifulSoup):
     """
     Core function of the program, returns list of links from urls
     :param urls: list of str
+    :param parser: parser 
     :return generator
     """
-    pages = get_pages_from_urls(urls)
+    pages = get_pages_from_contents(contents, parser)
     for page in pages:
         for url in page.fetch_urls():
             yield url
@@ -151,8 +153,9 @@ def main():
     Main function of the program
     """
     urls = sys.argv[1:]
+    contents = request_pages(urls)
 
-    for url in list_of_links_from_urls(urls):
+    for url in list_of_links_from_contents(contents):
         result = get_url_host_ip(url)
         if result:
             print result
