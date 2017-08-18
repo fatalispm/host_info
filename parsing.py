@@ -18,7 +18,13 @@ from parsers import parser_factory
 DELAY = 1
 RETRY = 3
 
-def retry(delay, tries, exceptions=(), message = ''):
+class RetryException(Exception):
+
+    """
+    Exception to be used for retry decorator function
+    """
+
+def retry(delay, tries):
     """
     Decorator for retrying number of attempts with some delay
     :Parameters:
@@ -27,21 +33,22 @@ def retry(delay, tries, exceptions=(), message = ''):
     :Return:
         wrapped function
     """
-    assert isinstance(exceptions, tuple), 'You should pass exceptions as tuple'
 
     def wrapper(func):
         @wraps(func)
         def inner(*args, **kwargs):
-            logging.info('Calling request page with params %s', (args,))
+            logging.info('Calling %s %s', func.__name__, args)
             counter = 0
             while counter < tries:
                 try:
                     return func(*args, **kwargs)
-                except exceptions as err:
-                    logging.exception(msg, args, kwargs)
+                except Exception as err:
+                    logging.exception('Error ocurred when running %s %s %s', func.__name__, args, kwargs)
 
                 time.sleep(delay)
                 counter += 1
+            raise RetryException('Function %s failed after %s attempts' % (func.__name__, tries))
+
         return inner
     return wrapper
 
@@ -88,8 +95,7 @@ def domain_from_url(url):
     return domain[4:] if domain.startswith('www.') else domain
 
 
-@retry(DELAY, RETRY, exceptions=(requests.RequestException,), 
-        message='Error occured when fetching %s %s')
+@retry(DELAY, RETRY)
 def request_page(url):
     """
     :Parameters:
@@ -114,11 +120,11 @@ def request_pages(urls):
     """
     logging.info('Requesting pages %s', urls)
     for url in urls:
-        page = request_page(url)
-        if page:
+        try:
+            page = request_page(url)
             yield page.content
-        else:
-            logging.debug('Wrong url %s', url)
+        except RetryException as err:
+            logging.exception('Failed to retrieve page: %s', url)
 
 def list_of_links_from_contents(contents, parser=''):
     """
