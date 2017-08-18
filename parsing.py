@@ -18,7 +18,7 @@ from parsers import parser_factory
 DELAY = 1
 RETRY = 3
 
-def retry(delay, tries):
+def retry(delay, tries, exceptions=(), message = ''):
     """
     Decorator for retrying number of attempts with some delay
     :Parameters:
@@ -27,6 +27,8 @@ def retry(delay, tries):
     :Return:
         wrapped function
     """
+    assert isinstance(exceptions, tuple), 'You should pass exceptions as tuple'
+
     def wrapper(func):
         @wraps(func)
         def inner(*args, **kwargs):
@@ -35,9 +37,8 @@ def retry(delay, tries):
             while counter < tries:
                 try:
                     return func(*args, **kwargs)
-                except requests.RequestException as err:
-                    message = "Error: %s occured when parsing url: %s %s"
-                    logging.error(message, err, args, kwargs)
+                except exceptions as err:
+                    logging.exception(msg, args, kwargs)
 
                 time.sleep(delay)
                 counter += 1
@@ -87,7 +88,8 @@ def domain_from_url(url):
     return domain[4:] if domain.startswith('www.') else domain
 
 
-@retry(DELAY, RETRY)
+@retry(DELAY, RETRY, exceptions=(requests.RequestException,), 
+        message='Error occured when fetching %s %s')
 def request_page(url):
     """
     :Parameters:
@@ -129,8 +131,8 @@ def list_of_links_from_contents(contents, parser=''):
     parser = parser_factory(parser)
     for content in contents:
         parsed_page = parser(content)
-        for a in parsed_page.find_all('a'):
-            url = a.get('href')
+        for item in parsed_page.find_all(href=True):
+            url = item.get('href')
             logging.info('Processed url %s', url)
             if url:
                 yield url

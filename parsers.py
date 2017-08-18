@@ -22,7 +22,7 @@ class Parser(object):
         pass
 
     @abstractmethod
-    def find_all(self, element):
+    def find_all(self, *args, **kwargs):
         """
         Function that find all elements with given tag
        
@@ -43,14 +43,15 @@ class BeautifulSoupParser(Parser):
         """
         self.soup = BeautifulSoup(content)
 
-    def find_all(self, element):
+    def find_all(self, *args, **kwargs):
         """
         :Paremeters:
-            - `element`: str tag to find
+            - `args`: list of params
+            - `kwargs`: dict of params
         :Return:
             list of elements
         """
-        return self.soup.find_all(element)
+        return self.soup.findAll(*args, **kwargs)
 
 def parser_factory(parser):
     """
