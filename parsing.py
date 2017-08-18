@@ -23,6 +23,7 @@ class RetryException(Exception):
     """
     Exception to be used for retry decorator function
     """
+    pass
 
 def retry(delay, tries):
     """
