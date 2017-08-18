@@ -15,7 +15,6 @@ import requests
 
 from parsers import parser_factory
 
-LOGGING = False
 DELAY = 1
 RETRY = 3
 
