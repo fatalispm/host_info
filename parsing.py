@@ -44,11 +44,13 @@ def retry(delay, tries):
                 try:
                     return func(*args, **kwargs)
                 except Exception as err:
-                    logging.exception('Error ocurred when running %s %s %s', func.__name__, args, kwargs)
+                    message = 'Error ocurred when running %s %s %s'
+                    logging.exception(message, func.__name__, args, kwargs)
 
                 time.sleep(delay)
                 counter += 1
-            raise RetryException('Function %s failed after %s attempts' % (func.__name__, tries))
+            msg = 'Function %s failed after %s attempts'
+            raise RetryException(msg % (func.__name__, tries))
 
         return inner
     return wrapper
@@ -78,7 +80,7 @@ def get_ip_from_url(domain):
         return socket.gethostbyname(domain)
     except socket.error:
         logging.error("Can't fetch ip from domain %s", domain)
-
+        return ''
 
 def domain_from_url(url):
     """
@@ -126,6 +128,7 @@ def request_pages(urls):
             yield page.content
         except RetryException as err:
             logging.exception('Failed to retrieve page: %s', url)
+            print('Wrong url %s' % url)
 
 def list_of_links_from_contents(contents, parser=''):
     """
