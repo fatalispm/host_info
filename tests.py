@@ -13,6 +13,9 @@ from parsing import (get_url_host_ip, domain_from_url, get_ip_from_url,
 from parsers import BeautifulSoupParser
 
 def fake_ip(ip): 
+    """
+    Mock for socket.gethostbyname
+    """
     if ip:
         return '1.1.1.1'
     raise error()
@@ -120,8 +123,14 @@ class TesBS4Parser(unittest.TestCase):
         self.assertEqual(len(result), 0)
         
 class TestRequestingPages(unittest.TestCase):
+    
+    """
+    Test requesting pages, including retry
+    """
+    
     def setUp(self):
         import parsing
+        self.original = parsing.requests.get
         parsing.requests.get = get
         
     def test_request_page_ok(self):
@@ -140,8 +149,17 @@ class TestRequestingPages(unittest.TestCase):
         url = 'broken_url'
         with self.assertRaises(RetryException):
            request_page(url)
+           
+    def tearDown(self):
+        import parsing
+        parsing.requests.get = self.original
         
 class TestFetchingLinks(unittest.TestCase):
+    
+    """
+    Test fetching links from content
+    """
+    
     def setUp(self):
         self.pages = ["""
               <a href="vk.com"></a>
