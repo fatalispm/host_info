@@ -11,6 +11,7 @@ from parsing import (get_url_host_ip, domain_from_url, get_ip_from_url,
                      RETRY, request_page, RetryException,
                      list_of_links_from_contents)
 from parsers import BeautifulSoupParser
+from patch import patch
 
 
 def fake_ip(ip):
@@ -20,11 +21,6 @@ def fake_ip(ip):
     if ip:
         return '1.1.1.1'
     raise error()
-
-
-def patch():
-    import parsing
-    parsing.socket.gethostbyname = fake_ip
 
 
 def get(page, calls=defaultdict(int), **kwargs):
@@ -46,13 +42,14 @@ def get(page, calls=defaultdict(int), **kwargs):
     raise Exception()
 
 
+@patch('parsing.socket.gethostbyname', new=fake_ip)
 class TestUrlParsing(unittest.TestCase):
     """
     Test URL parsing
     """
 
     def setUp(self):
-        patch()
+        pass
 
     def test_get_url_host_ip(self):
         valid_url = 'http://vk.com'
@@ -95,7 +92,6 @@ class TestUrlParsing(unittest.TestCase):
         self.assertEqual(result, fake_ip(1))
 
 
-
 class TesBS4Parser(unittest.TestCase):
     """
     Test functionality of BS4 parser
@@ -124,15 +120,14 @@ class TesBS4Parser(unittest.TestCase):
         self.assertEqual(len(result), 0)
 
 
+@patch('parsing.requests.get', get)
 class TestRequestingPages(unittest.TestCase):
     """
     Test requesting pages, including retry
     """
 
     def setUp(self):
-        import parsing
-        self.original = parsing.requests.get
-        parsing.requests.get = get
+        pass
 
     def test_request_page_ok(self):
         url = 'valid_url'
