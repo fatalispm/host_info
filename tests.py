@@ -32,7 +32,10 @@ def get(page, calls=defaultdict(int), **kwargs):
     }
     calls[page] += 1
     if calls[page] == retries[page]:
+        calls[page] = 0
         return True
+    if calls[page] >= min(RETRY, retries[page]):
+        calls[page] = 0
     raise Exception()
     
 class TestUrlParsing(unittest.TestCase):
