@@ -4,7 +4,7 @@ CREATE TABLE urls (
   id                INT NOT NULL AUTO_INCREMENT,
   url               VARCHAR(50),
   creation_time     TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
-  modification_time TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  modification_time TIMESTAMP    DEFAULT 0 ON UPDATE CURRENT_TIMESTAMP
   ,
   PRIMARY KEY (`id`),
   UNIQUE (`url`)
