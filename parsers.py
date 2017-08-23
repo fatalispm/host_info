@@ -4,7 +4,8 @@ Module that contains parsers
 
 from abc import ABCMeta, abstractmethod
 
-from bs4 import BeautifulSoup 
+from bs4 import BeautifulSoup
+
 
 class Parser(object):
     """
@@ -13,7 +14,7 @@ class Parser(object):
 
     ___metaclass__ = ABCMeta
 
-    @abstractmethod 
+    @abstractmethod
     def __init__(self, content):
         """
         :Parameters:
@@ -30,6 +31,7 @@ class Parser(object):
             - `element`: str
         """
         pass
+
 
 class BeautifulSoupParser(Parser):
     """
@@ -53,6 +55,7 @@ class BeautifulSoupParser(Parser):
         """
         return self.soup.findAll(*args, **kwargs)
 
+
 def parser_factory(parser):
     """
     :Parameters:
@@ -61,5 +64,5 @@ def parser_factory(parser):
         Parser
     """
     return {
-        'BeautifulSoup': BeautifulSoupParser
-    }.get(parser) or BeautifulSoupParser
+               'BeautifulSoup': BeautifulSoupParser
+           }.get(parser) or BeautifulSoupParser
