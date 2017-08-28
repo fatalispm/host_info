@@ -1,4 +1,3 @@
-
 """
 Module for retrieving ips/domains from url
 """
@@ -9,21 +8,26 @@ import socket
 import sys
 
 from functools import wraps
+from itertools import izip_longest
 from urlparse import urlparse
 
 import requests
 
+import connector
+
 from parsers import parser_factory
+from patch import patch
 
 DELAY = 1
 RETRY = 3
 
-class RetryException(Exception):
 
+class RetryException(Exception):
     """
     Exception to be used for retry decorator function
     """
     pass
+
 
 def retry(delay, tries):
     """
@@ -53,6 +57,7 @@ def retry(delay, tries):
             raise RetryException(msg % (func.__name__, tries))
 
         return inner
+
     return wrapper
 
 
@@ -81,6 +86,7 @@ def get_ip_from_url(domain):
     except socket.error:
         logging.error("Can't fetch ip from domain %s", domain)
         return ''
+
 
 def domain_from_url(url):
     """
@@ -130,7 +136,8 @@ def request_pages(urls):
             logging.exception('Failed to retrieve page: %s', url)
             print('Wrong url %s' % url)
 
-def list_of_links_from_contents(contents, parser=''):
+
+def list_of_links_from_contents(contents, urls=None, parser=''):
     """
     Core function of the program, returns list of links from urls
     :Parameters:
@@ -138,28 +145,54 @@ def list_of_links_from_contents(contents, parser=''):
         - `parser`: str name of the parser to use
     :return generator
     """
+    if not urls:
+        urls = []
+
     parser = parser_factory(parser)
-    for content in contents:
+    for url, content in izip_longest(urls, contents):
         parsed_page = parser(content)
         for item in parsed_page.find_all(href=True):
-            url = item.get('href')
-            logging.info('Processed url %s', url)
-            if url:
-                yield url
+            link = item.get('href')
+            logging.info('Processed url %s', link)
+            if link:
+                yield url, link
+
+
+def data_from_urls(urls):
+    """
+    :Parameters:
+        - urls: list of str
+
+    :Return:
+        generator of (url, (link, domain, ip))
+    """
+    contents = request_pages(urls)
+
+    for url, link in list_of_links_from_contents(contents, urls):
+        logging.info('Retrieving url %s', link)
+        result = get_url_host_ip(link)
+        if result:
+            yield url, result
+
 
 def main():
     """
     Main function of the program
     """
     urls = sys.argv[1:]
-    contents = request_pages(urls)
 
-    for url in list_of_links_from_contents(contents):
-        logging.info('Retrieving url %s', url)
-        result = get_url_host_ip(url)
-        if result:
-            print result
+    class Response(object):
+        def __init__(self, str):
+            self.content = str
 
+    def wrapper(*args, **kwargs):
+        return Response("""<a href="vk.co"></a>
+        <a href="bb.com"></a>
+        """)
+
+    with patch('requests.get', wrapper):
+        for url, data in data_from_urls(urls):
+            print url, data
 
 if __name__ == '__main__':
     main()

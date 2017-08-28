@@ -7,11 +7,12 @@ import unittest
 from collections import defaultdict
 from socket import error
 
+from connector import insert
 from parsing import (get_url_host_ip, domain_from_url, get_ip_from_url,
                      RETRY, request_page, RetryException,
                      list_of_links_from_contents)
 from parsers import BeautifulSoupParser
-from patch import patch
+from patch import patch, MagicMock
 
 
 def fake_ip(ip):
@@ -162,3 +163,35 @@ class TestFetchingLinks(unittest.TestCase):
     def test_fetching_links(self):
         result = list(list_of_links_from_contents(self.pages))
         self.assertEqual(len(result), 4)
+
+
+class Cursor(object):
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+
+class FakeConnector(object):
+    def __getattribute__(self, item):
+        return Cursor
+
+
+class TestInserting(unittest.TestCase):
+    """
+    Test that function insert calls all neccessarry functions
+    """
+
+    def test_connect_is_called(self):
+        with patch('parsing.connector.insert_links_ips',
+                   MagicMock()) as url_links, patch(
+            'parsing.connector.insert_link', MagicMock()) as link, \
+                patch('parsing.connector.insert_ip', MagicMock()) as ip, \
+                patch('parsing.connector.insert_url', MagicMock()) as url:
+            insert(FakeConnector(), 'a', 'b', 'c', 'd')
+            self.assertEqual(url_links.call_count, 1)
+            self.assertEqual(link.call_count, 1)
+            self.assertEqual(ip.call_count, 1)
+            self.assertEqual(url.call_count, 1)

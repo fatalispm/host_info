@@ -1,3 +1,4 @@
+pymysql
 psutil==5.2.2
 bs4
 grequests

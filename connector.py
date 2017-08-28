@@ -1,8 +1,9 @@
 """
 Module for connecting to mysql
 """
-
+import logging
 import pymysql
+from mysqlx import OperationalError
 
 import local
 
@@ -35,10 +36,15 @@ def get_connect(settings=None):
     :return:
         pymysql.Connect
     """
+    logging.info('Getting connection with settings : %s', settings)
     if not settings:
         settings = local.settings
 
-    return pymysql.connect(**settings)
+    try:
+        return pymysql.connect(**settings)
+    except OperationalError:
+        logging.exception("Can't connect to the database with settings: %s",
+                          settings)
 
 
 def insert(connect, url, link, domain, ip):
@@ -48,16 +54,19 @@ def insert(connect, url, link, domain, ip):
         - `url`: str
     """
 
-    with connect.cursor() as c:
-        insert_url(c, url)
-        insert_ip(c, ip)
-        insert_link(c, domain, link)
-        insert_links_ips(c, ip, link, url)
+    try:
+        with connect.cursor() as cursor:
+            insert_url(cursor, url)
+            insert_ip(cursor, ip)
+            insert_link(cursor, domain, link)
+            insert_links_ips(cursor, ip, link, url)
+    except OperationalError:
+        logging.exception('Failed to get a cursor')
 
     connect.commit()
 
 
-def insert_links_ips(c, ip, link, url):
+def insert_links_ips(cursor, ip, link, url):
     """
     Insert ip, link, url connection into the db
     :Parameters:
@@ -66,32 +75,36 @@ def insert_links_ips(c, ip, link, url):
         - `ip`: str
         - `link`: str
     """
-    c.execute(LINK_IPS, (link, ip, url))
+    logging.info('Inserting link_ips %s %s %s', ip, link, url)
+    cursor.execute(LINK_IPS, (link, ip, url))
 
 
-def insert_link(c, domain, link):
+def insert_link(cursor, domain, link):
     """
     :Parameters:
         - `c`: pymysql.cursor
         - `domain`: str
         - `link`: str
     """
-    c.execute(INSERT_LINK, (link, domain))
+    logging.info('Inserting link and domain: %s %s', link, domain)
+    cursor.execute(INSERT_LINK, (link, domain))
 
 
-def insert_ip(c, ip):
+def insert_ip(cursor, ip):
     """
     :Parameters:
         - `c`: pymysql.cursor
         - `ip`: str
     """
-    c.execute(INSERT_IP_INFO, ip)
+    logging.info('Inserting ip %s', ip)
+    cursor.execute(INSERT_IP_INFO, ip)
 
 
-def insert_url(c, url):
+def insert_url(cursor, url):
     """
     :Parameters:
         - `c`: pymysql.cursor
         - `url`: str
     """
-    c.execute(INSERT_URL, url)
+    logging.info('Inserting url %s', url)
+    cursor.execute(INSERT_URL, url)

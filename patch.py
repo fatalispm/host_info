@@ -37,7 +37,7 @@ class patch(object):
         :param target: str path to function
         :param new: callable function to replace target
         """
-        assert callable(new), 'new must be callable'
+
         self.target = target
         self.new = new
 
@@ -88,6 +88,22 @@ class patch(object):
 
     def __enter__(self):
         self._replace_function()
+        return self.new
 
     def __exit__(self, *exc_info):
         setattr(self.module, self.attribute, self.original)
+
+
+class MagicMock(object):
+
+    """
+    Class for mocking callables with ease
+    """
+
+    def __init__(self, return_value=None):
+        self.return_value = return_value
+        self.call_count = 0
+
+    def __call__(self, *args, **kwargs):
+        self.call_count += 1
+

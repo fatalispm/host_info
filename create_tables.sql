@@ -28,10 +28,11 @@ CREATE TABLE ip_info (
 );
 
 CREATE TABLE link_ips (
+  id INT NOT NULL AUTO_INCREMENT,
   link_id INT,
   ip_id   INT,
   url_id  INT,
-  PRIMARY KEY (`link_id`, `ip_id`, `url_id`),
+  PRIMARY KEY (`id`),
   CONSTRAINT FOREIGN KEY `link_fk` (`link_id`) REFERENCES `link_info`
   (`id`)
     ON DELETE CASCADE
