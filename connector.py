@@ -3,9 +3,9 @@ Module for connecting to mysql
 """
 import logging
 import pymysql
-from mysqlx import OperationalError
 
 import local
+from pymysql import OperationalError
 
 
 def get_connection(settings=None):
