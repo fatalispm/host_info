@@ -19,7 +19,7 @@ def group(lst):
     Function that groups lst by (domain, ip) and counter number
     of occurencs of all (domain, ip)
     :param lst: list of tuple(url, HostInfo)
-    :return:
+    :return: dict[tuple(domain, ip), tuple(counter, set(url))]
     """
     grouped = defaultdict(lambda: (0, set()))
 
@@ -33,7 +33,7 @@ def insert_grouped(groupped, urls_ids):
     """
     Function that inserts grouped items into db
     :param groupped: dict[tuple(domain, ip), tuple(counter, url)]
-    :param urls_ids:
+    :param urls_ids: dict[url, id]
     """
 
     for domain_ip, counter_url in groupped.items():
