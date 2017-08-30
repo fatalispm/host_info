@@ -9,16 +9,16 @@ import local
 
 INSERT_URL = """
 INSERT INTO urls (url) VALUES (%s)
-  ON DUPLICATE KEY UPDATE urls.modification_time = NOW();
+  ON DUPLICATE KEY UPDATE modification_time = NOW();
   """
 
 INSERT_LINK = """
 INSERT INTO link_info (link, domain) VALUES (%s, %s)
-  ON DUPLICATE KEY UPDATE link_info.counter = link_info.counter + 1;
+  ON DUPLICATE KEY UPDATE counter = counter + 1;
 """
 
 INSERT_IP_INFO = """INSERT INTO ip_info (ip) VALUES (%s)
-  ON DUPLICATE KEY UPDATE ip_info.counter = ip_info.ip + 1;
+  ON DUPLICATE KEY UPDATE counter = ip + 1;
   """
 
 LINK_IPS = """
@@ -29,7 +29,7 @@ INSERT INTO link_ips(link_id, ip_id, url_id) VALUES (
 );"""
 
 
-def get_connect(settings=None):
+def get_connection(settings=None):
     """
     :Parameters:
         - `settings`: dict of settings
@@ -97,7 +97,7 @@ def insert_ip(cursor, ip):
         - `ip`: str
     """
     logging.info('Inserting ip %s', ip)
-    cursor.execute(INSERT_IP_INFO, ip)
+    cursor.execute(INSERT_IP_INFO, (ip,))
 
 
 def insert_url(cursor, url):
@@ -107,4 +107,4 @@ def insert_url(cursor, url):
         - `url`: str
     """
     logging.info('Inserting url %s', url)
-    cursor.execute(INSERT_URL, url)
+    cursor.execute(INSERT_URL, (url,))
