@@ -4,7 +4,7 @@ Example of writing parsed info into db
 import sys
 
 import logging
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 import connector
 import db_api
@@ -22,12 +22,8 @@ def group(lst):
     :param lst: list of tuple(url, HostInfo)
     :return: dict[tuple(domain, ip, url), int]
     """
-    grouped = defaultdict(int)
-
-    for url, host_info in lst:
-        grouped[host_info.domain, host_info.ip, url] += 1
-
-    return grouped
+    return Counter((host_info.domain, host_info.ip, url) for url, host_info in
+                   lst)
 
 
 def prepare(groupped, url_ids):
