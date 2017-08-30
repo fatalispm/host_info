@@ -11,7 +11,6 @@ import SocketServer
 
 PORT = 8000
 
-class Handler()
 Handler = SimpleHTTPServer.SimpleHTTPRequestHandler
 
 httpd = SocketServer.TCPServer(("", PORT), Handler)

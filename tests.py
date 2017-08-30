@@ -190,7 +190,7 @@ class TestInserting(unittest.TestCase):
             'parsing.connector.insert_link', MagicMock()) as link, \
                 patch('parsing.connector.insert_ip', MagicMock()) as ip, \
                 patch('parsing.connector.insert_url', MagicMock()) as url:
-            insert(FakeConnector(), 'a', 'b', 'c', 'd')
+            insert('a', 'b', 'c', 'd', FakeConnector())
             self.assertEqual(url_links.call_count, 1)
             self.assertEqual(link.call_count, 1)
             self.assertEqual(ip.call_count, 1)

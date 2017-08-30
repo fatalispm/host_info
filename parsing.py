@@ -10,10 +10,9 @@ import sys
 from functools import wraps
 from itertools import izip_longest
 from urlparse import urlparse
+from collections import namedtuple
 
 import requests
-
-import connector
 
 from parsers import parser_factory
 from patch import patch
@@ -21,6 +20,7 @@ from patch import patch
 DELAY = 1
 RETRY = 3
 
+HostingInfo = namedtuple('HostingInfo', ('link', 'ip', 'domain'))
 
 class RetryException(Exception):
     """
@@ -71,7 +71,7 @@ def get_url_host_ip(url):
     """
     domain = domain_from_url(url)
     ip = get_ip_from_url(domain)
-    return url, domain, ip
+    return HostingInfo(link=url, domain=domain, ip=ip)
 
 
 def get_ip_from_url(domain):
@@ -85,7 +85,7 @@ def get_ip_from_url(domain):
         return socket.gethostbyname(domain)
     except socket.error:
         logging.error("Can't fetch ip from domain %s", domain)
-        return ''
+        return '0.0.0.0'
 
 
 def domain_from_url(url):

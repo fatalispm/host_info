@@ -44,6 +44,7 @@ def insert_grouped(groupped, urls_ids):
         db_api.insert(domain=domain, ip=ip,
                       counter=counter_url[0],
                       urls_ids=url_ids)
+
 def main():
     """
     First we insert urls into db, so we know their ids
