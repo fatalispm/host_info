@@ -11,8 +11,8 @@ CONFROOT = os.environ.get('CONFROOT', '')
 db_conf_path = os.path.join(CONFROOT, 'db.cfg')
 
 parser = configparser.ConfigParser(
-    dict(user='user', password='password', host='localhost',
-         database='example'))
+    dict(user='i1', password='password', host='localhost',
+         database='host'))
 
 parser.read(db_conf_path)
 

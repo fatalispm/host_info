@@ -1,65 +1,72 @@
 import logging
+
+import time
+
+import datetime
 from pymysql import OperationalError
 
 from connector import get_connection
 
 INSERT_URL = """
-    INSERT INTO urls (url) VALUES (%s)
+    INSERT INTO urls (url, creation_time) VALUES (%s, %s)
 """
 
 INSERT_LINK = """
-INSERT INTO domain_ip (domain, ip, counter) VALUES (%s, INET_ATON(%s), %s)
+INSERT INTO domain_ip (domain, ip, url_id, counter) VALUES (%s, INET_ATON(%s), %s, %s)
   ON DUPLICATE KEY UPDATE counter = counter + VALUES(counter);
 """
 
-INSERT_URL_DOMAIN = """
-INSERT IGNORE INTO url_domain (domain_id, url_id) VALUES (
-  %s, %s
-);"""
 
-def insert_domain_url(cursor, url_id, domain_id):
-    """
-    :Parameters:
-         - `cursor`: pymysql.cursor
-         - `url_id`: str
-         - `domain_id`: str
-    """
-    domains = [domain_id] * len(url_id)
-    logging.info('Inserting url_id domain_id', url_id, domain_id)
-    cursor.executemany(INSERT_URL_DOMAIN, zip(domains, url_id))
+FETCH_URL_IDS = """
+    SELECT id, url FROM urls WHERE creation_time=%s AND url in %s
+;"""
 
-def insert(domain, ip, counter, urls_ids, connect=None):
+
+def insert(data, connect=None):
     """
     :Parameters:
         - `connect`: pymysql.Connect
-        - `domain`: str
-        - `ip` : str
-        - `urls_ids`: list of str
+        - `data`: list of tuple(domain, ip, url_id, counter)
     """
     if not connect:
         connect = get_connection()
 
     try:
         with connect.cursor() as cursor:
-            insert_domain_ip(cursor, domain, ip, counter)
-            row_id = cursor.lastrowid
-            insert_domain_url(cursor, urls_ids, row_id)
-
+            cursor.executemany(INSERT_LINK, data)
     except OperationalError:
         logging.exception('Failed to get a cursor')
 
     connect.commit()
 
 
-def insert_domain_ip(cursor, domain, ip, counter):
+def get_url_ids(connection, urls, timestamp):
+    """
+    Function that returns dict[url, id] for list of urls
+    :param connection: pymysql.Connection
+    :param urls: list of str
+    :param timestamp: str
+    :return: dict[url, id]
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(FETCH_URL_IDS, (timestamp, urls))
+    d = {}
+
+    for id, url in cursor.fetchall():
+        d[url] = id
+    connection.commit()
+    return d
+
+
+def insert_domain_ip(cursor, domain, ip, counter, url_id):
     """
     :Parameters:
         - `c`: pymysql.cursor
         - `domain`: str
         - `link`: str
     """
-    logging.info('Inserting ip and domain: %s %s %s', ip, domain, counter )
-    cursor.execute(INSERT_LINK, (domain, ip, counter))
+    logging.info('Inserting ip and domain: %s %s %s', ip, domain, counter)
+    cursor.execute(INSERT_LINK, (domain, ip, counter, url_id))
 
 
 def insert_urls(connection, urls):
@@ -67,18 +74,17 @@ def insert_urls(connection, urls):
     :Parameters:
         - `connection`: pymysql.Connection
         - `urls`: list of str
+        - `date`:
     :Return:
-        dict[url, row_id]
     """
+    ts = time.time()
+    timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
     logging.info('Inserting url %s', urls)
-
-    url_ids = {}
+    urls_date = zip(urls, [timestamp] * len(urls))
 
     with connection.cursor() as cursor:
-        for url in urls:
-            cursor.execute(INSERT_URL, (url,))
-            url_ids[url] = cursor.lastrowid
+        cursor.executemany(INSERT_URL, urls_date)
 
     connection.commit()
 
-    return url_ids
+    return timestamp

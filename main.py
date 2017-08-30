@@ -19,31 +19,26 @@ def group(lst):
     Function that groups lst by (domain, ip) and counter number
     of occurencs of all (domain, ip)
     :param lst: list of tuple(url, HostInfo)
-    :return: dict[tuple(domain, ip), tuple(counter, set(url))]
+    :return: dict[tuple(domain, ip, url), int]
     """
-    grouped = defaultdict(lambda: (0, set()))
+    grouped = defaultdict(int)
 
     for url, host_info in lst:
-        t = grouped[host_info.domain, host_info.ip]
-        t[1].add(url)
-        grouped[host_info.domain, host_info.ip] = (t[0]+1, t[1])
+        grouped[host_info.domain, host_info.ip, url] += 1
+
     return grouped
 
-def insert_grouped(groupped, urls_ids):
-    """
-    Function that inserts grouped items into db
-    :param groupped: dict[tuple(domain, ip), tuple(counter, url)]
-    :param urls_ids: dict[url, id]
+def prepare(groupped, url_ids):
     """
 
-    for domain_ip, counter_url in groupped.items():
-        counter, urls = counter_url
-        domain, ip = domain_ip
+    :Parameters:
+         - `groupped`: dict[tuple(domain, ip, url), int]
+         - `url_ids`: dict[url, url_id]
+    :return: list of tuple(domain, ip, url, counter)
+    """
 
-        url_ids = [urls_ids[c] for c in urls]
-        db_api.insert(domain=domain, ip=ip,
-                      counter=counter_url[0],
-                      urls_ids=url_ids)
+    for (domain, ip, url), counter in groupped.items():
+        yield domain, ip, url_ids[url], counter
 
 def main():
     """
@@ -57,7 +52,9 @@ def main():
 
     connection = connector.get_connection(settings)
 
-    urls_ids = db_api.insert_urls(connection, urls)  # type: dict
+    timestamp = db_api.insert_urls(connection, urls)  # type: str
+
+    url_ids = db_api.get_url_ids(connection, urls, timestamp)
 
     for lst in split_every(BATCH_SIZE, data_from_urls(urls)):
         """
@@ -67,7 +64,8 @@ def main():
         logging.info('Saving %s into db', lst)
         groupped = group(lst)
 
-        insert_grouped(groupped, urls_ids)
+        prepared_data = list(prepare(groupped, url_ids))
+        db_api.insert(prepared_data, connection)
 
 if __name__ == '__main__':
     main()
