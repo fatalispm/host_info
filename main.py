@@ -14,6 +14,7 @@ from local import settings
 
 BATCH_SIZE = 10
 
+
 def group(lst):
     """
     Function that groups lst by (domain, ip) and counter number
@@ -28,6 +29,7 @@ def group(lst):
 
     return grouped
 
+
 def prepare(groupped, url_ids):
     """
 
@@ -39,6 +41,7 @@ def prepare(groupped, url_ids):
 
     for (domain, ip, url), counter in groupped.items():
         yield domain, ip, url_ids[url], counter
+
 
 def main():
     """
@@ -66,6 +69,7 @@ def main():
 
         prepared_data = list(prepare(groupped, url_ids))
         db_api.insert(prepared_data, connection)
+
 
 if __name__ == '__main__':
     main()

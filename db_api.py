@@ -16,10 +16,22 @@ INSERT INTO domain_ip (domain, ip, url_id, counter) VALUES (%s, INET_ATON(%s), %
   ON DUPLICATE KEY UPDATE counter = counter + VALUES(counter);
 """
 
-
 FETCH_URL_IDS = """
     SELECT id, url FROM urls WHERE creation_time=%s AND url in %s
 ;"""
+
+REMOVE_OLD_URLS = """
+DELETE FROM urls WHERE creation_time > %s;
+"""
+
+
+def delete_old_urls(connection, hours=24):
+    now = datetime.datetime.now()
+    old_date = now - datetime.timedelta(hours=hours)
+    prepared_old_date = old_date.strftime('%Y-%m-%d %H:%M:%S')
+
+    with connection.cursor() as cursor:
+        cursor.execute(REMOVE_OLD_URLS, (prepared_old_date,))
 
 
 def insert(data, connect=None):
