@@ -13,7 +13,7 @@ import logging
 
 import pickle
 
-import main
+import insert_db
 
 
 def create_server_socket(host='127.0.0.1', port=8000):
@@ -48,7 +48,7 @@ def handler(data, connection):
     """
     data = pickle.loads(data)
     response = {'accepted': True}
-    thread = Thread(target=main.fetch_urls, args=[data.get('urls', [])])
+    thread = Thread(target=insert_db.fetch_urls, args=[data.get('urls', [])])
     thread.run()
     connection.sendall(pickle.dumps(response))
 
@@ -80,7 +80,7 @@ def client_thread(connection, client_address, handler):
     return Thread(target=target)
 
 
-def _main():
+def main():
     serversocket = create_server_socket(port=8012)
     if not serversocket:
         return
@@ -93,4 +93,4 @@ def _main():
         serversocket.close()
 
 if __name__ == '__main__':
-    _main()
+    main()
