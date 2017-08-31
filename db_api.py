@@ -3,7 +3,7 @@ import logging
 import time
 
 import datetime
-from pymysql import OperationalError
+from pymysql import OperationalError, InternalError
 
 from connector import get_connection
 
@@ -17,7 +17,7 @@ INSERT INTO domain_ip (domain, ip, url_id, counter) VALUES (%s, INET_ATON(%s), %
 """
 
 FETCH_URL_IDS = """
-    SELECT id, url FROM urls WHERE creation_time=%s AND url in %s
+    SELECT id, url FROM urls WHERE creation_time=%s AND url IN %s
 ;"""
 
 REMOVE_OLD_URLS = """
@@ -25,78 +25,115 @@ DELETE FROM urls WHERE creation_time > %s;
 """
 
 
-def delete_old_urls(connection, hours=24):
-    now = datetime.datetime.now()
-    old_date = now - datetime.timedelta(hours=hours)
-    prepared_old_date = old_date.strftime('%Y-%m-%d %H:%M:%S')
-
-    with connection.cursor() as cursor:
-        cursor.execute(REMOVE_OLD_URLS, (prepared_old_date,))
-
-
-def insert(data, connect=None):
+class DBAPIException(Exception):
     """
-    :Parameters:
-        - `connect`: pymysql.Connect
-        - `data`: list of tuple(domain, ip, url_id, counter)
+    Exception used for db api errors
     """
-    if not connect:
-        connect = get_connection()
-
-    try:
-        with connect.cursor() as cursor:
-            cursor.executemany(INSERT_LINK, data)
-    except OperationalError:
-        logging.exception('Failed to get a cursor')
-
-    connect.commit()
 
 
-def get_url_ids(connection, urls, timestamp):
+class DBAPI(object):
     """
-    Function that returns dict[url, id] for list of urls
-    :param connection: pymysql.Connection
-    :param urls: list of str
-    :param timestamp: str
-    :return: dict[url, id]
+    Class that encapsulates working with MySQL DB
     """
-    with connection.cursor() as cursor:
-        cursor.execute(FETCH_URL_IDS, (timestamp, urls))
-    d = {}
 
-    for id, url in cursor.fetchall():
-        d[url] = id
-    connection.commit()
-    return d
+    def __init__(self, settings):
+        self.settings = settings
+
+    @property
+    def connection(self):
+        if not getattr(self, '_connection', None):
+            try:
+                self._connection = get_connection(self.settings)
+            except OperationalError as err:
+                raise DBAPIException(err)
+        return self._connection
 
 
-def insert_domain_ip(cursor, domain, ip, counter, url_id):
+    def delete_old_urls(self, hours=24):
+        """
+        Function that deletes old urls
+        :param hours: int
+        """
+        now = datetime.datetime.now()
+        old_date = now - datetime.timedelta(hours=hours)
+        prepared_old_date = old_date.strftime('%Y-%m-%d %H:%M:%S')
+
+        with self.connection.cursor() as cursor:
+            cursor.execute(REMOVE_OLD_URLS, (prepared_old_date,))
+
+    def insert(self, data):
+        """
+        :Parameters:
+            - `data`: list of tuple(domain, ip, url_id, counter)
+        """
+
+        try:
+            with self.connection.cursor() as cursor:
+                cursor.executemany(INSERT_LINK, data)
+        except OperationalError:
+            logging.exception('Failed to get a cursor')
+
+        except InternalError as err:
+            logging.exception('Wrong query when inserting %s', data)
+
+        self.connection.commit()
+
+    def get_url_ids(self, urls, timestamp):
+        """
+        Function that returns dict[url, id] for list of urls
+        :param urls: list of str
+        :param timestamp: str
+        :return: dict[url, id]
+        """
+        with self.connection.cursor() as cursor:
+            cursor.execute(FETCH_URL_IDS, (timestamp, urls))
+        d = {}
+
+        for id, url in cursor.fetchall():
+            d[url] = id
+        self.connection.commit()
+        return d
+
+    def insert_domain_ip(self, domain, ip, counter, url_id):
+        """
+        :Parameters:
+            - `c`: pymysql.cursor
+            - `domain`: str
+            - `link`: str
+        """
+        logging.info('Inserting ip and domain: %s %s %s', ip, domain, counter)
+        with self.connection.cursor() as cursor:
+            cursor.execute(INSERT_LINK, (domain,
+                                         ip,
+                                         counter,
+                                         url_id))
+
+    def insert_urls(self, urls):
+        """
+        :Parameters:
+            - `urls`: list of str
+            - `date`:
+        :Return:
+        """
+        ts = time.time()
+        timestamp = datetime.datetime.fromtimestamp(ts).strftime(
+            '%Y-%m-%d %H:%M:%S')
+        logging.info('Inserting url %s', urls)
+        urls_date = zip(urls, [timestamp] * len(urls))
+
+        with self.connection.cursor() as cursor:
+            cursor.executemany(INSERT_URL, urls_date)
+
+        self.connection.commit()
+
+        return timestamp
+
+def get_db_api(settings):
     """
-    :Parameters:
-        - `c`: pymysql.cursor
-        - `domain`: str
-        - `link`: str
+    Function that returns encapsulated db object
+    Currently returns only one possible
+    :param settings: dict
+    :return: DBAPI
     """
-    logging.info('Inserting ip and domain: %s %s %s', ip, domain, counter)
-    cursor.execute(INSERT_LINK, (domain, ip, counter, url_id))
 
-
-def insert_urls(connection, urls):
-    """
-    :Parameters:
-        - `connection`: pymysql.Connection
-        - `urls`: list of str
-        - `date`:
-    :Return:
-    """
-    ts = time.time()
-    timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
-    logging.info('Inserting url %s', urls)
-    urls_date = zip(urls, [timestamp] * len(urls))
-
-    with connection.cursor() as cursor:
-        cursor.executemany(INSERT_URL, urls_date)
-
-    connection.commit()
-
-    return timestamp
+    return DBAPI(settings)

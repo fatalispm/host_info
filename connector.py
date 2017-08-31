@@ -21,6 +21,7 @@ def get_connection(settings=None):
 
     try:
         return pymysql.connect(**settings)
-    except OperationalError:
+    except OperationalError :
         logging.exception("Can't connect to the database with settings: %s",
                           settings)
+        raise

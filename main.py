@@ -47,14 +47,18 @@ def main():
     :return:
     """
     urls = sys.argv[1:]
+    fetch_urls(urls)
+
+
+def fetch_urls(urls):
+    """
+    Fetches urls and inserts them into db
+    :param urls: list of str
+    """
     urls = set(urls)
-
-    connection = connector.get_connection(settings)
-
-    timestamp = db_api.insert_urls(connection, urls)  # type: str
-
-    url_ids = db_api.get_url_ids(connection, urls, timestamp)
-
+    db = db_api.DBAPI(settings)
+    timestamp = db.insert_urls(urls)  # type: str
+    url_ids = db.get_url_ids(urls, timestamp)
     for lst in split_every(BATCH_SIZE, data_from_urls(urls)):
         """
         Process in packs of BATCH_SIZE
@@ -64,7 +68,7 @@ def main():
         groupped = group(lst)
 
         prepared_data = list(prepare(groupped, url_ids))
-        db_api.insert(prepared_data, connection)
+        db.insert(prepared_data)
 
 
 if __name__ == '__main__':
