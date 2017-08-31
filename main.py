@@ -4,9 +4,8 @@ Example of writing parsed info into db
 import sys
 
 import logging
-from collections import defaultdict, Counter
+from collections import Counter
 
-import connector
 import db_api
 from parsing import data_from_urls
 from utils import split_every
