@@ -6,12 +6,10 @@ fetching list of parsed urls
 fetching list of parsed links and count of their occurenses
 """
 import socket
+import logging
+import json
 
 from threading import Thread
-
-import logging
-
-import pickle
 
 import insert_db
 
@@ -24,7 +22,8 @@ def create_server_socket(host='127.0.0.1', port=8000):
     :Return:
         socket.socket
     """
-    serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    serversocket = socket.socket()
+
     try:
         serversocket.bind((host, port))
     except socket.error:
@@ -36,27 +35,35 @@ def create_server_socket(host='127.0.0.1', port=8000):
     return serversocket
 
 
-create_server_socket()
-
-
 def handler(data, connection):
     """
     Function for handling requests
-    :param data: str
-    :param connection: socket.connection
-    :return:
+    :Parameters:
+         - `data`: str
+         - `connection`: socket.connection
     """
-    data = pickle.loads(data)
-    response = {'accepted': True}
+    try:
+        data = json.loads(data)
+    except ValueError:
+        connection.sendall('Send valid data')
+        return
+
+    try:
+        data['urls']
+    except KeyError:
+        connection.sendall('Include urls in your json data')
+        return
+
     thread = Thread(target=insert_db.fetch_urls, args=[data.get('urls', [])])
     thread.run()
-    connection.sendall(pickle.dumps(response))
+    connection.sendall(json.dumps({'accepted': True}))
 
 
 def client_thread(connection, client_address, handler):
     """
-    :param connection: socket.connection
-    :param client_address: str
+    :Parameters:
+         - `connection`: socket.connection
+         - `client_address`: str
     :return: Thread
     """
 
@@ -81,7 +88,8 @@ def client_thread(connection, client_address, handler):
 
 
 def main():
-    serversocket = create_server_socket(port=8012)
+    port = int(raw_input('Please enter port number(int)'))  # let it fail
+    serversocket = create_server_socket(port=port)
     if not serversocket:
         return
     try:
@@ -91,6 +99,7 @@ def main():
             ct.run()
     finally:
         serversocket.close()
+
 
 if __name__ == '__main__':
     main()

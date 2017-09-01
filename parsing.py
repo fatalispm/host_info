@@ -150,6 +150,8 @@ def list_of_links_from_contents(contents, urls=None, parser=''):
 
     parser = parser_factory(parser)
     for url, content in izip_longest(urls, contents):
+        if not content:
+            continue
         parsed_page = parser(content)
         for item in parsed_page.find_all(href=True):
             link = item.get('href')

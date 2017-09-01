@@ -55,9 +55,14 @@ def fetch_urls(urls):
     :param urls: list of str
     """
     urls = set(urls)
-    db = db_api.DBAPI(settings)
+    db = db_api.DBAPI(**settings)
     timestamp = db.insert_urls(urls)  # type: str
-    url_ids = db.get_url_ids(urls, timestamp)
+    try:
+        url_ids = db.get_url_ids(urls, timestamp)
+    except Exception as e:
+        logging.exception('Failed to insert urls in db, exiting program ..')
+        return
+
     for lst in split_every(BATCH_SIZE, data_from_urls(urls)):
         """
         Process in packs of BATCH_SIZE
